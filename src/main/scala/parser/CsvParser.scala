@@ -27,9 +27,7 @@ class CsvParserImpl(
       .map(bs => bs.utf8String.split(delimiter).toList)
 
   override val parse: Flow[ByteString, List[String], NotUsed] =
-    Flow[ByteString]
-      .via(lines)
-      .via(columns)
+    lines.via(columns)
 
 }
 
