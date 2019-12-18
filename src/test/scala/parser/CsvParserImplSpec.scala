@@ -30,12 +30,16 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
       future.futureValue shouldBe Vector(Seq("Year", "Make", "Model", "Description", "Price"))
     }
 
-    "correctly parse header with line into stream of elements" in new Fixture {
+    "correctly parse header with escaped lines into stream of elements" in new Fixture {
       val future: Future[Seq[List[String]]] = Source(Header +: Lines).via(subject.parse).runWith(Sink.seq)
 
       future.futureValue shouldBe Vector(
         Seq("Year", "Make", "Model", "Description", "Price"),
-        Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00")
+        Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00"),
+        Seq("1997", "Ford", "E350", "\"ac, abs, moon\"", "3000.00"),
+        Seq("1999", "Chevy", "\"Venture \"\"Extended Edition\"\"\"", "\"\"", "4900.00"),
+        Seq("1999", "Chevy", "\"Venture \"\"Extended Edition, Very Large\"\"\"", "", "5000.00"),
+        Seq("1996", "Jeep", "Grand Cherokee", "\"MUST SELL!\nair, moon roof, loaded\"", "4799.00")
       )
     }
   }
@@ -44,6 +48,10 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
 object CsvParserImplSpec {
   val Header: ByteString = ByteString("Year,Make,Model,Description,Price\n")
   val Lines: List[ByteString] = List(
-    "1970,Dodge,Challenger R/T,426-cubic inch engine,30000.00\n"
+    "1970,Dodge,Challenger R/T,426-cubic inch engine,30000.00\n",
+    "1997,Ford,E350,\"ac, abs, moon\",3000.00\n",
+    "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",\"\",4900.00\n",
+    "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00\n",
+    "1996,Jeep,Grand Cherokee,\"MUST SELL!\nair, moon roof, loaded\",4799.00\n",
   ).map(ByteString(_))
 }

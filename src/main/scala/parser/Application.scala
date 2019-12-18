@@ -11,7 +11,7 @@ object Application extends App {
   val csvParser: CsvParser = new CsvParserImpl()
 
   FileIO
-    .fromPath(Paths.get("src/main/resources/automobiles.csv"))
+    .fromPath(Paths.get("src/main/resources/SampleCSVFile_53000kb.csv"))
     .via(csvParser.parse)
     .runForeach(println)
 

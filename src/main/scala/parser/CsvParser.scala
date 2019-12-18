@@ -1,9 +1,8 @@
 package parser
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Framing}
+import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-import parser.CsvParserImpl._
 
 trait CsvParser {
 
@@ -12,26 +11,34 @@ trait CsvParser {
 }
 
 class CsvParserImpl(
-    eol: Char = '\n',
-    delimiter: Char = ',',
-    //                     quotingChar: Char = '"'
+    eol: String = "\r\n",
+    delimiter: String = ",",
+    quotingChar: Char = '"'
 ) extends CsvParser {
 
-  //TODO handle quoted eol
-  private val lines: Flow[ByteString, ByteString, NotUsed] =
-    Framing.delimiter(ByteString(eol), DefaultFrame, AllowTruncation)
-
-  //TODO handle quoted delimiter
-  private val columns: Flow[ByteString, List[String], NotUsed] =
+  private val lines: Flow[ByteString, String, NotUsed] =
     Flow[ByteString]
-      .map(bs => bs.utf8String.split(delimiter).toList)
+      .mapConcat(byteString => splitByPattern(quotingChar, eol)(byteString.utf8String))
+
+  private val columns: Flow[String, List[String], NotUsed] =
+    Flow[String]
+      .map(splitByPattern(quotingChar, delimiter))
 
   override val parse: Flow[ByteString, List[String], NotUsed] =
     lines.via(columns)
 
-}
-
-object CsvParserImpl {
-  val DefaultFrame: Int        = 1024
-  val AllowTruncation: Boolean = true
+  private def splitByPattern(quotingChar: Char, separator: String)(str: String): List[String] =
+    str
+      .split(
+        s"$separator" +                               // match a separator
+        s"(?=" +                                      // start positive look ahead
+        s"(?:" +                                      // start non-capturing group 1
+        s"[^$quotingChar]*" +                         //     match 'otherThanQuote' zero or more times
+        s"$quotingChar[^$quotingChar]*$quotingChar" + //     match 'quotedString'
+        s")*" +                                       //   end group 1 and repeat it zero or more times
+        s"[^$quotingChar]*" +                         //   match 'otherThanQuote'
+        s"$$" +                                       // match the end of the string
+        s")" // stop positive look ahead
+      )
+      .toList
 }
