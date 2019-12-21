@@ -17,36 +17,44 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
     val subject = new CsvParserImpl(eol = Eol.toString, delimiter = Delimiter, quotingChar = QuotingChar)
   }
 
-  "parse" should {
-    "correctly parse empty stream" in new Fixture {
+  "The parser" should {
+    "handle empty stream" in new Fixture {
       val future: Future[Seq[List[String]]] = Source.empty[ByteString].via(subject.parse).runWith(Sink.seq)
 
       future.futureValue should have size 0
     }
 
-    "correctly parse header into single element stream" in new Fixture {
+    "handle single element stream" in new Fixture {
       val future: Future[Seq[List[String]]] = Source.single(Header).via(subject.parse).runWith(Sink.seq)
 
       future.futureValue shouldBe Vector(Seq("Year", "Make", "Model", "Description", "Price"))
     }
 
-    "correctly parse line with null element" in new Fixture {
+    "handle null element stream" in new Fixture {
       val future: Future[Seq[List[String]]] = Source.single(ByteString(s"${QuotingChar}a${QuotingChar},,c")).via(subject.parse).runWith(Sink.seq)
 
-      future.futureValue shouldBe Vector(Seq(s"${QuotingChar}a${QuotingChar}", null, "c"))
+      future.futureValue shouldBe Vector(Seq(s"a", null, "c"))
+    }
+
+    "handle new line characters embedded in a quoted cell" in new Fixture {
+      val future: Future[Seq[List[String]]] = Source.single(ByteString("a,\"a split\ncell\",\nb,\"something else\"")).via(subject.parse).runWith(Sink.seq)
+
+      future.futureValue shouldBe Vector(
+        Seq("a", "a split\ncell"),
+        Seq("b", "something else")
+      )
     }
 
     "correctly parse header with escaped lines into stream of elements" in new Fixture {
       val future: Future[Seq[List[String]]] = Source(Header +: Lines).via(subject.parse).runWith(Sink.seq)
 
-      future.futureValue shouldBe Vector(
-        Seq("Year", "Make", "Model", "Description", "Price"),
-        Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00"),
-        Seq("1997", "Ford", "E350", s"${QuotingChar}ac, abs, moon${QuotingChar}", "3000.00"),
-        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition${QuotingChar}${QuotingChar}${QuotingChar}", s"${QuotingChar}${QuotingChar}", "4900.00"),
-        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar}", null, "5000.00"),
-        Seq("1996", "Jeep", "Grand Cherokee", s"""${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar}""", "4799.00")
-      )
+      private val resultList: Seq[List[String]] = future.futureValue
+      resultList.head shouldBe Seq("Year", "Make", "Model", "Description", "Price")
+      resultList(1) shouldBe Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00")
+      resultList(2) shouldBe  Seq("1997", "Ford", "E350", "ac, abs, moon", "3000.00")
+      resultList(3) shouldBe  Seq("1999", "Chevy", s"Venture ${QuotingChar}Extended Edition$QuotingChar", "", "4900.00")
+      resultList(4) shouldBe  Seq("1999", "Chevy", s"Venture ${QuotingChar}Extended Edition, Very Large$QuotingChar", null, "5000.00")
+      resultList(5) shouldBe  Seq("1996", "Jeep", "Grand Cherokee", s"""MUST SELL!${Eol}air, moon roof, loaded""", "4799.00")
     }
   }
 }

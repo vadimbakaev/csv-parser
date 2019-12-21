@@ -50,7 +50,11 @@ class CsvParserImpl(
       )
       .toList
       .map {
-        case "" => null
-        case x  => x
+        case ""                                    => null
+        case x if x == s"$quotingChar$quotingChar" => ""
+        case other =>
+          other.replaceAll(s"(?<!$quotingChar)$quotingChar(?!$quotingChar)|($quotingChar)$quotingChar|$quotingChar",
+                           "$1")
       }
+
 }
