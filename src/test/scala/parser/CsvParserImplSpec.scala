@@ -30,6 +30,12 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
       future.futureValue shouldBe Vector(Seq("Year", "Make", "Model", "Description", "Price"))
     }
 
+    "correctly parse line with null element" in new Fixture {
+      val future: Future[Seq[List[String]]] = Source.single(ByteString(s"${QuotingChar}a${QuotingChar},,c")).via(subject.parse).runWith(Sink.seq)
+
+      future.futureValue shouldBe Vector(Seq(s"${QuotingChar}a${QuotingChar}", null, "c"))
+    }
+
     "correctly parse header with escaped lines into stream of elements" in new Fixture {
       val future: Future[Seq[List[String]]] = Source(Header +: Lines).via(subject.parse).runWith(Sink.seq)
 
@@ -38,7 +44,7 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
         Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00"),
         Seq("1997", "Ford", "E350", s"${QuotingChar}ac, abs, moon${QuotingChar}", "3000.00"),
         Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition${QuotingChar}${QuotingChar}${QuotingChar}", s"${QuotingChar}${QuotingChar}", "4900.00"),
-        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar}", "", "5000.00"),
+        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar}", null, "5000.00"),
         Seq("1996", "Jeep", "Grand Cherokee", s"""${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar}""", "4799.00")
       )
     }
@@ -55,6 +61,6 @@ object CsvParserImplSpec {
     s"""${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition${QuotingChar}${QuotingChar}${QuotingChar},${QuotingChar}${QuotingChar},4900.00$Eol""",
     s"""1999,Chevy,${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended""",
     s""" Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar},,5000.00$Eol""",
-    s"""1996,Jeep,Grand Cherokee,${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar},4799.00$Eol""",
+    s"""1996,Jeep,Grand Cherokee,${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar},4799.00$Eol"""
   ).map(ByteString(_))
 }

@@ -46,7 +46,11 @@ class CsvParserImpl(
         s")*" +                                       //   end group 1 and repeat it zero or more times
         s"[^$quotingChar]*" +                         //   match 'otherThanQuote'
         s"$$" +                                       // match the end of the string
-        s")"                                          // stop positive look ahead
+        s")" // stop positive look ahead
       )
       .toList
+      .map {
+        case "" => null
+        case x  => x
+      }
 }
