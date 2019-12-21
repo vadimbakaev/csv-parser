@@ -14,7 +14,7 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
   import CsvParserImplSpec._
 
   trait Fixture {
-    val subject = new CsvParserImpl()
+    val subject = new CsvParserImpl(eol = Eol.toString, delimiter = Delimiter, quotingChar = QuotingChar)
   }
 
   "parse" should {
@@ -36,22 +36,25 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
       future.futureValue shouldBe Vector(
         Seq("Year", "Make", "Model", "Description", "Price"),
         Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00"),
-        Seq("1997", "Ford", "E350", "\"ac, abs, moon\"", "3000.00"),
-        Seq("1999", "Chevy", "\"Venture \"\"Extended Edition\"\"\"", "\"\"", "4900.00"),
-        Seq("1999", "Chevy", "\"Venture \"\"Extended Edition, Very Large\"\"\"", "", "5000.00"),
-        Seq("1996", "Jeep", "Grand Cherokee", "\"MUST SELL!\nair, moon roof, loaded\"", "4799.00")
+        Seq("1997", "Ford", "E350", s"${QuotingChar}ac, abs, moon${QuotingChar}", "3000.00"),
+        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition${QuotingChar}${QuotingChar}${QuotingChar}", s"${QuotingChar}${QuotingChar}", "4900.00"),
+        Seq("1999", "Chevy", s"${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar}", "", "5000.00"),
+        Seq("1996", "Jeep", "Grand Cherokee", s"""${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar}""", "4799.00")
       )
     }
   }
 }
 
 object CsvParserImplSpec {
-  val Header: ByteString = ByteString("Year,Make,Model,Description,Price\n")
+  val Eol: Char = '\n'
+  val Delimiter: String = ","
+  val QuotingChar: Char = '"'
+  val Header: ByteString = ByteString(s"Year,Make,Model,Description,Price$Eol")
   val Lines: List[ByteString] = List(
-    "1970,Dodge,Challenger R/T,426-cubic inch engine,30000.00\n",
-    "1997,Ford,E350,\"ac, abs, moon\",3000.00\n",
-    "1999,Chevy,\"Venture \"\"Extended Edition\"\"\",\"\",4900.00\n",
-    "1999,Chevy,\"Venture \"\"Extended Edition, Very Large\"\"\",,5000.00\n",
-    "1996,Jeep,Grand Cherokee,\"MUST SELL!\nair, moon roof, loaded\",4799.00\n",
+    s"""1970,Dodge,Challenger R/T,426-cubic inch engine,30000.00${Eol}1997,Ford,E350,${QuotingChar}ac, abs, moon${QuotingChar},3000.00${Eol}1999,Chevy,""",
+    s"""${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended Edition${QuotingChar}${QuotingChar}${QuotingChar},${QuotingChar}${QuotingChar},4900.00$Eol""",
+    s"""1999,Chevy,${QuotingChar}Venture ${QuotingChar}${QuotingChar}Extended""",
+    s""" Edition, Very Large${QuotingChar}${QuotingChar}${QuotingChar},,5000.00$Eol""",
+    s"""1996,Jeep,Grand Cherokee,${QuotingChar}MUST SELL!${Eol}air, moon roof, loaded${QuotingChar},4799.00$Eol""",
   ).map(ByteString(_))
 }

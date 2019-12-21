@@ -1,8 +1,9 @@
 package parser
 
 import akka.NotUsed
-import akka.stream.scaladsl.Flow
+import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
+import parser.graphstages.BufferSquashStage
 
 trait CsvParser {
 
@@ -11,18 +12,25 @@ trait CsvParser {
 }
 
 class CsvParserImpl(
-    eol: String = "\r\n",
+    eol: String = "\n",
     delimiter: String = ",",
-    quotingChar: Char = '"'
+    quotingChar: Char = '"',
+    maximumFrameLength: Int = 4028
 ) extends CsvParser {
 
-  private val lines: Flow[ByteString, String, NotUsed] =
-    Flow[ByteString]
-      .mapConcat(byteString => splitByPattern(quotingChar, eol)(byteString.utf8String))
+  private val isBalancedBy: Char => ByteString => Boolean = quote =>
+    byteString => byteString.count(_ == quote.toByte) % 2 == 0
 
-  private val columns: Flow[String, List[String], NotUsed] =
-    Flow[String]
-      .map(splitByPattern(quotingChar, delimiter))
+  private val joinVia: String => (ByteString, ByteString) => ByteString = separator => _ ++ ByteString(separator) ++ _
+
+  private val lines: Flow[ByteString, ByteString, NotUsed] =
+    Framing
+      .delimiter(ByteString(eol), maximumFrameLength, allowTruncation = true)
+      .via(Flow.fromGraph(new BufferSquashStage[ByteString](isBalancedBy(quotingChar), joinVia(eol))))
+
+  private val columns: Flow[ByteString, List[String], NotUsed] =
+    Flow[ByteString]
+      .map(byteSting => splitByPattern(quotingChar, delimiter)(byteSting.utf8String))
 
   override val parse: Flow[ByteString, List[String], NotUsed] =
     lines.via(columns)
@@ -38,7 +46,7 @@ class CsvParserImpl(
         s")*" +                                       //   end group 1 and repeat it zero or more times
         s"[^$quotingChar]*" +                         //   match 'otherThanQuote'
         s"$$" +                                       // match the end of the string
-        s")" // stop positive look ahead
+        s")"                                          // stop positive look ahead
       )
       .toList
 }
