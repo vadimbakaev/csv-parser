@@ -22,5 +22,5 @@ run
 - [x] The parser should handle field delimiters inside quoted cells
 - [x] Two consecutive field delimiters mean the value is absent/null
 - [x] A field where part of the text appears as "quoted" and part as not quoted should be interpreted as a single field
-- [ ] The input file can potentially be very large
+- [x] The input file can potentially be very large(Tested with 1 GB file)
 - [ ] Handle files in arbitrary encodings other than UTF-8
