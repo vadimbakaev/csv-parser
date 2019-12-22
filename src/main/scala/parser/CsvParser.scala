@@ -38,7 +38,7 @@ class CsvParserImpl(
     lines.via(columns)
 
   private def splitUnquoted(quotingChar: Char, separator: String)(str: String): List[String] =
-    balance(quotingChar, separator: String, str.split(separator, Int.MaxValue).toList)
+    bufferingByQuotingChars(quotingChar, separator: String, str.split(separator, Int.MaxValue).toList)
       .map {
         case ""                                    => null
         case x if x == s"$quotingChar$quotingChar" => ""
@@ -46,17 +46,25 @@ class CsvParserImpl(
       }
 
   @tailrec
-  private def balance(quotingChar: Char,
-                      separator: String,
-                      xs: List[String],
-                      result: List[String] = Nil,
-                      acc: List[String] = Nil): List[String] = xs match {
-    case Nil =>
-      result
-    case x :: xs if (acc :+ x).mkString(separator).count(_ == quotingChar) % 2 == 0 =>
-      balance(quotingChar, separator, xs, result :+ (acc :+ x).mkString(separator))
-    case x :: xs =>
-      balance(quotingChar, separator, xs, result, acc :+ x)
+  private def bufferingByQuotingChars(quotingChar: Char,
+                                      separator: String,
+                                      xs: List[String],
+                                      result: List[String] = Nil,
+                                      acc: List[String] = Nil): List[String] = {
+    val isBalanced: String => Boolean = _.count(_ == quotingChar) % 2 == 0
+    xs match {
+      case Nil =>
+        result
+      case x :: xs =>
+        val nextAcc             = acc :+ x
+        val nextStringCandidate = nextAcc.mkString(separator)
+
+        if (isBalanced(nextStringCandidate)) {
+          bufferingByQuotingChars(quotingChar, separator, xs, result :+ nextStringCandidate)
+        } else {
+          bufferingByQuotingChars(quotingChar, separator, xs, result, nextAcc)
+        }
+    }
   }
 
 }
