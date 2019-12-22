@@ -40,9 +40,21 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
       val future: Future[Seq[List[String]]] = Source.single(ByteString("a,\"a split\ncell\",\nb,\"something else\"")).via(subject.parse).runWith(Sink.seq)
 
       future.futureValue shouldBe Vector(
-        Seq("a", "a split\ncell"),
+        Seq("a", "a split\ncell", null),
         Seq("b", "something else")
       )
+    }
+
+    "handle end of the line as null" in new Fixture {
+      val future: Future[Seq[List[String]]] = Source.single(ByteString("a,b,")).via(subject.parse).runWith(Sink.seq)
+
+      future.futureValue.head shouldBe  Seq("a", "b", null)
+    }
+
+    "handle partially quoted fields" in new Fixture {
+      val future: Future[Seq[List[String]]] = Source.single(ByteString("\"abc,\"onetwo,three,doremi")).via(subject.parse).runWith(Sink.seq)
+
+      future.futureValue.head shouldBe  Seq("abc,onetwo", "three", "doremi")
     }
 
     "correctly parse header with escaped lines into stream of elements" in new Fixture {

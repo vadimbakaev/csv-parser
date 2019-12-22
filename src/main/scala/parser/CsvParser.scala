@@ -5,6 +5,8 @@ import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
 import parser.graphstages.BufferSquashStage
 
+import scala.annotation.tailrec
+
 trait CsvParser {
 
   val parse: Flow[ByteString, List[String], NotUsed]
@@ -30,31 +32,31 @@ class CsvParserImpl(
 
   private val columns: Flow[ByteString, List[String], NotUsed] =
     Flow[ByteString]
-      .map(byteSting => splitByPattern(quotingChar, delimiter)(byteSting.utf8String))
+      .map(byteSting => splitUnquoted(quotingChar, delimiter)(byteSting.utf8String))
 
   override val parse: Flow[ByteString, List[String], NotUsed] =
     lines.via(columns)
 
-  private def splitByPattern(quotingChar: Char, separator: String)(str: String): List[String] =
-    str
-      .split(
-        s"$separator" +                               // match a separator
-        s"(?=" +                                      // start positive look ahead
-        s"(?:" +                                      // start non-capturing group 1
-        s"[^$quotingChar]*" +                         //     match 'otherThanQuote' zero or more times
-        s"$quotingChar[^$quotingChar]*$quotingChar" + //     match 'quotedString'
-        s")*" +                                       //   end group 1 and repeat it zero or more times
-        s"[^$quotingChar]*" +                         //   match 'otherThanQuote'
-        s"$$" +                                       // match the end of the string
-        s")" // stop positive look ahead
-      )
-      .toList
+  private def splitUnquoted(quotingChar: Char, separator: String)(str: String): List[String] =
+    balance(quotingChar, separator: String, str.split(separator, Int.MaxValue).toList)
       .map {
         case ""                                    => null
         case x if x == s"$quotingChar$quotingChar" => ""
-        case other =>
-          other.replaceAll(s"(?<!$quotingChar)$quotingChar(?!$quotingChar)|($quotingChar)$quotingChar|$quotingChar",
-                           "$1")
+        case other                                 => other.replaceAll(s"($quotingChar)$quotingChar|$quotingChar", "$1")
       }
+
+  @tailrec
+  private def balance(quotingChar: Char,
+                      separator: String,
+                      xs: List[String],
+                      result: List[String] = Nil,
+                      acc: List[String] = Nil): List[String] = xs match {
+    case Nil =>
+      result
+    case x :: xs if (acc :+ x).mkString(separator).count(_ == quotingChar) % 2 == 0 =>
+      balance(quotingChar, separator, xs, result :+ (acc :+ x).mkString(separator))
+    case x :: xs =>
+      balance(quotingChar, separator, xs, result, acc :+ x)
+  }
 
 }
