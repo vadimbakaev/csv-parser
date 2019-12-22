@@ -3,7 +3,8 @@ package parser
 import java.nio.file.Paths
 
 import akka.actor.ActorSystem
-import akka.stream.scaladsl.FileIO
+import akka.stream.scaladsl.{FileIO, Flow}
+import parser.graphstages.MapStage
 
 object Application extends App {
   implicit val actorSystem: ActorSystem = ActorSystem()
@@ -11,8 +12,9 @@ object Application extends App {
   val csvParser: CsvParser = new CsvParserImpl()
 
   FileIO
-    .fromPath(Paths.get("src/main/resources/SampleCSVFile_53000kb.csv"))
+    .fromPath(Paths.get("src/main/resources/automobiles.csv"))
     .via(csvParser.parse)
+    .via(Flow.fromGraph(new MapStage[String]()))
     .runForeach(println)
 
 }

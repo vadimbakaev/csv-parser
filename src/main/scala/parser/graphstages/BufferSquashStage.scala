@@ -3,6 +3,8 @@ package parser.graphstages
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 
+import scala.util.Try
+
 class BufferSquashStage[A](predicate: A => Boolean, f: (A, A) => A) extends GraphStage[FlowShape[A, A]] {
 
   val inPort: Inlet[A]   = Inlet[A]("in")
@@ -19,7 +21,7 @@ class BufferSquashStage[A](predicate: A => Boolean, f: (A, A) => A) extends Grap
 
         override def onPush(): Unit = {
 
-          try {
+          Try {
 
             val nextElement = grab(inPort)
             acc = acc :+ nextElement
@@ -32,10 +34,11 @@ class BufferSquashStage[A](predicate: A => Boolean, f: (A, A) => A) extends Grap
               pull(inPort)
             }
 
-          } catch {
+          }.recover {
             case t: Throwable => failStage(t)
           }
 
+          ()
         }
 
         override def onPull(): Unit = pull(inPort)
