@@ -31,13 +31,15 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
     }
 
     "handle null element stream" in new Fixture {
-      val future: Future[Seq[List[String]]] = Source.single(ByteString(s"${QuotingChar}a${QuotingChar},,c")).via(subject.parse).runWith(Sink.seq)
+      val future: Future[Seq[List[String]]] =
+        Source.single(ByteString(s"${QuotingChar}a$QuotingChar,,c")).via(subject.parse).runWith(Sink.seq)
 
       future.futureValue shouldBe Vector(Seq(s"a", null, "c"))
     }
 
     "handle new line characters embedded in a quoted cell" in new Fixture {
-      val future: Future[Seq[List[String]]] = Source.single(ByteString("a,\"a split\ncell\",\nb,\"something else\"")).via(subject.parse).runWith(Sink.seq)
+      val future: Future[Seq[List[String]]] =
+        Source.single(ByteString("a,\"a split\ncell\",\nb,\"something else\"")).via(subject.parse).runWith(Sink.seq)
 
       future.futureValue shouldBe Vector(
         Seq("a", "a split\ncell", null),
@@ -48,13 +50,14 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
     "handle end of the line as null" in new Fixture {
       val future: Future[Seq[List[String]]] = Source.single(ByteString("a,b,")).via(subject.parse).runWith(Sink.seq)
 
-      future.futureValue.head shouldBe  Seq("a", "b", null)
+      future.futureValue.head shouldBe Seq("a", "b", null)
     }
 
     "handle partially quoted fields" in new Fixture {
-      val future: Future[Seq[List[String]]] = Source.single(ByteString("\"abc,\"onetwo,three,doremi")).via(subject.parse).runWith(Sink.seq)
+      val future: Future[Seq[List[String]]] =
+        Source.single(ByteString("\"abc,\"onetwo,three,doremi")).via(subject.parse).runWith(Sink.seq)
 
-      future.futureValue.head shouldBe  Seq("abc,onetwo", "three", "doremi")
+      future.futureValue.head shouldBe Seq("abc,onetwo", "three", "doremi")
     }
 
     "correctly parse header with escaped lines into stream of elements" in new Fixture {
@@ -63,18 +66,26 @@ class CsvParserImplSpec extends TestKit(ActorSystem()) with BaseSpec {
       private val resultList: Seq[List[String]] = future.futureValue
       resultList.head shouldBe Seq("Year", "Make", "Model", "Description", "Price")
       resultList(1) shouldBe Seq("1970", "Dodge", "Challenger R/T", "426-cubic inch engine", "30000.00")
-      resultList(2) shouldBe  Seq("1997", "Ford", "E350", "ac, abs, moon", "3000.00")
-      resultList(3) shouldBe  Seq("1999", "Chevy", s"Venture ${QuotingChar}Extended Edition$QuotingChar", "", "4900.00")
-      resultList(4) shouldBe  Seq("1999", "Chevy", s"Venture ${QuotingChar}Extended Edition, Very Large$QuotingChar", null, "5000.00")
-      resultList(5) shouldBe  Seq("1996", "Jeep", "Grand Cherokee", s"""MUST SELL!${Eol}air, moon roof, loaded""", "4799.00")
+      resultList(2) shouldBe Seq("1997", "Ford", "E350", "ac, abs, moon", "3000.00")
+      resultList(3) shouldBe Seq("1999", "Chevy", s"Venture ${QuotingChar}Extended Edition$QuotingChar", "", "4900.00")
+      resultList(4) shouldBe Seq("1999",
+                                 "Chevy",
+                                 s"Venture ${QuotingChar}Extended Edition, Very Large$QuotingChar",
+                                 null,
+                                 "5000.00")
+      resultList(5) shouldBe Seq("1996",
+                                 "Jeep",
+                                 "Grand Cherokee",
+                                 s"""MUST SELL!${Eol}air, moon roof, loaded""",
+                                 "4799.00")
     }
   }
 }
 
 object CsvParserImplSpec {
-  val Eol: Char = '\n'
-  val Delimiter: String = ","
-  val QuotingChar: Char = '"'
+  val Eol: Char          = '\n'
+  val Delimiter: String  = ","
+  val QuotingChar: Char  = '"'
   val Header: ByteString = ByteString(s"Year,Make,Model,Description,Price$Eol")
   val Lines: List[ByteString] = List(
     s"""1970,Dodge,Challenger R/T,426-cubic inch engine,30000.00${Eol}1997,Ford,E350,${QuotingChar}ac, abs, moon${QuotingChar},3000.00${Eol}1999,Chevy,""",
