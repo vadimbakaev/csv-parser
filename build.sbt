@@ -1,6 +1,6 @@
 name := "csv-parser"
 
-version := "0.1"
+version := "0.2"
 
 scalaVersion := "2.12.10"
 
@@ -8,16 +8,13 @@ resolvers += ("Typesafe Repository" at "http://repo.typesafe.com/typesafe/releas
 
 libraryDependencies ++= {
   object Version {
-    val scalaTest          = "3.1.0"
-    val mockitoScala       = "1.10.0"
-    val akkaStream         = "2.6.1"
+    val scalaTest    = "3.1.0"
+    val mockitoScala = "1.10.0"
   }
 
   Seq(
-    "com.typesafe.akka"       %% "akka-stream"             % Version.akkaStream,
-    "com.typesafe.akka"       %% "akka-stream-testkit"     % Version.akkaStream % Test,
-    "org.mockito"             %% "mockito-scala"           % Version.mockitoScala % Test,
-    "org.scalatest"           %% "scalatest"               % Version.scalaTest % Test
+    "org.mockito"   %% "mockito-scala" % Version.mockitoScala % Test,
+    "org.scalatest" %% "scalatest"     % Version.scalaTest    % Test
   )
 }
 
